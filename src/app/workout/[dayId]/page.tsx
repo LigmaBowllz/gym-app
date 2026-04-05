@@ -379,10 +379,11 @@ export default function WorkoutPage() {
 
       workoutDay.exercises.forEach((exercise) => {
         const rec = getWeightRecommendation(exercise.id, exercise.repRange, dayId);
-        initialWeights[exercise.id] = rec.suggestedWeight || 0;
+        const suggestedWeight = rec.suggestedWeight || 0;
+        initialWeights[exercise.id] = suggestedWeight;
         initialWarmUp[exercise.id] = Array(exercise.warmupSets[1]).fill(false);
-        initialSets[exercise.id] = Array(exercise.workingSets).fill(null).map(() => ({
-          weight: 0,
+        initialSets[exercise.id] = Array(exercise.workingSets).fill(null).map((_, setIndex) => ({
+          weight: setIndex === exercise.workingSets - 1 ? suggestedWeight : 0, // Pre-fill last set with planned weight
           reps: 0,
           completed: false,
           isWarmup: false,
@@ -406,6 +407,19 @@ export default function WorkoutPage() {
   const handlePlannedWeightChange = useCallback((exerciseId: string, value: string) => {
     const numValue = parseFloat(value) || 0;
     setPlannedWeights((prev) => ({ ...prev, [exerciseId]: numValue }));
+    
+    // Also update the last working set's weight with the planned weight
+    setCompletedSets((prev) => {
+      const exerciseSets = [...(prev[exerciseId] || [])];
+      if (exerciseSets.length > 0) {
+        const lastIndex = exerciseSets.length - 1;
+        exerciseSets[lastIndex] = {
+          ...exerciseSets[lastIndex],
+          weight: numValue,
+        };
+      }
+      return { ...prev, [exerciseId]: exerciseSets };
+    });
   }, []);
 
   const handleWarmUpToggle = useCallback((exerciseId: string, setIndex: number) => {
