@@ -11,19 +11,21 @@ import { formatIntensity } from '@/lib/calculators/deload';
 import { useWorkoutSession } from '@/lib/storage/useWorkoutStorage';
 import { getDateKey } from '@/lib/storage/storage';
 import { LoggedSet, WorkoutLogEntry } from '@/lib/database/types';
-import { 
-  ArrowLeft, 
-  Check, 
-  Dumbbell, 
-  Trophy, 
-  Home, 
-  Play, 
-  Flame, 
-  Target, 
+import BreakTimer from '@/components/BreakTimer';
+import {
+  ArrowLeft,
+  Check,
+  Dumbbell,
+  Trophy,
+  Home,
+  Play,
+  Flame,
+  Target,
   ChevronDown,
   ChevronUp,
   Zap,
   Activity,
+  Timer,
 } from 'lucide-react';
 
 // Day-specific color configurations
@@ -101,6 +103,7 @@ function ExerciseCard({
   completedSets,
   onSetLog,
   onSetComplete,
+  onBreakTimerClick,
   index,
 }: {
   exercise: any;
@@ -113,6 +116,7 @@ function ExerciseCard({
   completedSets: LoggedSet[];
   onSetLog: (setIndex: number, field: 'weight' | 'reps', value: string) => void;
   onSetComplete: (setIndex: number) => void;
+  onBreakTimerClick: () => void;
   index: number;
 }) {
   const [isExpanded, setIsExpanded] = useState(true);
@@ -263,6 +267,15 @@ function ExerciseCard({
                           </span>
                         )}
                       </span>
+                      {set?.completed && (
+                        <button
+                          onClick={onBreakTimerClick}
+                          className="p-2 rounded-lg bg-accent-success/20 hover:bg-accent-success/30 transition-all"
+                          aria-label="Start break timer"
+                        >
+                          <Timer className="w-4 h-4 text-accent-success" />
+                        </button>
+                      )}
                     </div>
                     <div className="flex gap-3">
                       <div className="flex-1">
@@ -406,13 +419,22 @@ export default function WorkoutPage() {
     });
   }, []);
 
+  const [showBreakTimer, setShowBreakTimer] = useState(false);
+
   const handleSetComplete = useCallback((exerciseId: string, setIndex: number) => {
     setCompletedSets((prev) => {
       const exerciseSets = [...(prev[exerciseId] || [])];
+      const isCurrentlyCompleted = exerciseSets[setIndex].completed;
       exerciseSets[setIndex] = {
         ...exerciseSets[setIndex],
-        completed: !exerciseSets[setIndex].completed,
+        completed: !isCurrentlyCompleted,
       };
+      
+      // Show break timer when completing a set (not uncompleting)
+      if (!isCurrentlyCompleted) {
+        setShowBreakTimer(true);
+      }
+      
       return { ...prev, [exerciseId]: exerciseSets };
     });
   }, []);
@@ -673,6 +695,7 @@ export default function WorkoutPage() {
               completedSets={completedSets[exercise.id] || []}
               onSetLog={(setIndex, field, value) => handleSetLog(exercise.id, setIndex, field, value)}
               onSetComplete={(setIndex) => handleSetComplete(exercise.id, setIndex)}
+              onBreakTimerClick={() => setShowBreakTimer(true)}
               index={index}
             />
           );
@@ -689,6 +712,15 @@ export default function WorkoutPage() {
           Complete Workout
         </button>
       </div>
+
+      {/* Break Timer Modal */}
+      {showBreakTimer && (
+        <BreakTimer
+          durationSeconds={180}
+          onClose={() => setShowBreakTimer(false)}
+          onSkip={() => setShowBreakTimer(false)}
+        />
+      )}
     </div>
   );
 }
