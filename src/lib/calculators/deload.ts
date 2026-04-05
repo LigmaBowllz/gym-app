@@ -12,6 +12,13 @@ export function formatIntensity(intensity: Exercise['lastSetIntensity']): string
       return 'Failure';
     case 'myo-reps':
       return `Myo-reps (${intensity.activationReps}+${intensity.miniSets}×${intensity.miniSets})`;
+    case 'failure-with-llps':
+      return intensity.description ? `Failure + LLPs (${intensity.description})` : 'Failure + LLPs';
+    case 'static-stretch':
+      return `Static Stretch (${intensity.duration}s)`;
+    default:
+      const _exhaustiveCheck: never = intensity;
+      return `Unknown intensity`;
   }
 }
 
