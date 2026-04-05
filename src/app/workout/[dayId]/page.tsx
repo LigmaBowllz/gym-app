@@ -100,6 +100,7 @@ function ExerciseCard({
   warmUpSets,
   warmUpCompleted,
   onWarmUpToggle,
+  onWarmUpSetComplete,
   completedSets,
   onSetLog,
   onSetComplete,
@@ -113,6 +114,7 @@ function ExerciseCard({
   warmUpSets: any[];
   warmUpCompleted: boolean[];
   onWarmUpToggle: (index: number) => void;
+  onWarmUpSetComplete: (setIndex: number) => void;
   completedSets: LoggedSet[];
   onSetLog: (setIndex: number, field: 'weight' | 'reps', value: string) => void;
   onSetComplete: (setIndex: number) => void;
@@ -206,7 +208,14 @@ function ExerciseCard({
                 {warmUpSets.map((ws, setIndex) => (
                   <button
                     key={setIndex}
-                    onClick={() => onWarmUpToggle(setIndex)}
+                    onClick={() => {
+                      const wasCompleted = warmUpCompleted[setIndex];
+                      onWarmUpToggle(setIndex);
+                      // Trigger break timer when completing a warm-up set (not uncompleting)
+                      if (!wasCompleted) {
+                        onWarmUpSetComplete(setIndex);
+                      }
+                    }}
                     className={`w-full p-3 rounded-xl border flex items-center justify-between transition-all duration-300 ${
                       warmUpCompleted[setIndex]
                         ? 'bg-accent-success/20 border-accent-success shadow-glow-success'
@@ -420,8 +429,14 @@ export default function WorkoutPage() {
   }, []);
 
   const [showBreakTimer, setShowBreakTimer] = useState(false);
+  const [breakTimerDuration, setBreakTimerDuration] = useState(180);
 
-  const handleSetComplete = useCallback((exerciseId: string, setIndex: number) => {
+  const handleWarmUpSetComplete = useCallback(() => {
+    setBreakTimerDuration(60); // 1 minute for warm-up sets
+    setShowBreakTimer(true);
+  }, []);
+
+  const handleWorkingSetComplete = useCallback((exerciseId: string, setIndex: number) => {
     setCompletedSets((prev) => {
       const exerciseSets = [...(prev[exerciseId] || [])];
       const isCurrentlyCompleted = exerciseSets[setIndex].completed;
@@ -430,8 +445,9 @@ export default function WorkoutPage() {
         completed: !isCurrentlyCompleted,
       };
       
-      // Show break timer when completing a set (not uncompleting)
+      // Show break timer when completing a working set (not uncompleting)
       if (!isCurrentlyCompleted) {
+        setBreakTimerDuration(180); // 3 minutes for working sets
         setShowBreakTimer(true);
       }
       
@@ -692,10 +708,14 @@ export default function WorkoutPage() {
               warmUpSets={warmUpSets}
               warmUpCompleted={warmUpCompleted[exercise.id] || []}
               onWarmUpToggle={(setIndex) => handleWarmUpToggle(exercise.id, setIndex)}
+              onWarmUpSetComplete={handleWarmUpSetComplete}
               completedSets={completedSets[exercise.id] || []}
               onSetLog={(setIndex, field, value) => handleSetLog(exercise.id, setIndex, field, value)}
-              onSetComplete={(setIndex) => handleSetComplete(exercise.id, setIndex)}
-              onBreakTimerClick={() => setShowBreakTimer(true)}
+              onSetComplete={(setIndex) => handleWorkingSetComplete(exercise.id, setIndex)}
+              onBreakTimerClick={() => {
+                setBreakTimerDuration(180);
+                setShowBreakTimer(true);
+              }}
               index={index}
             />
           );
@@ -716,7 +736,7 @@ export default function WorkoutPage() {
       {/* Break Timer Modal */}
       {showBreakTimer && (
         <BreakTimer
-          durationSeconds={180}
+          durationSeconds={breakTimerDuration}
           onClose={() => setShowBreakTimer(false)}
           onSkip={() => setShowBreakTimer(false)}
         />
